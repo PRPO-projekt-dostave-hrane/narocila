@@ -167,7 +167,7 @@ paths:
       tags:
         - narocila
       operationId: placajNarocilo
-      summary: Plačanj naročilo po ID
+      summary: Plačaj naročilo po ID
       description: Stranka plača naročilo. Dovoljeno iz statusa SPREJETO.
       parameters:
         - name: Idempotency-Key
