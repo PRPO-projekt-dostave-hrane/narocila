@@ -1,0 +1,501 @@
+openapi: 3.1.0
+info:
+  title: Naročila API
+  version: 1.0.0
+  description: Oddaja naročil, sledenje statusu, plačilo in ocene.
+
+servers:
+  - url: http://localhost:8080
+
+tags:
+  - name: narocila
+    description: Naročila jedi iz restavracije
+  - name: ocene
+    description: Ocena enega naročila
+
+paths:
+  /v1/narocila:
+    get:
+      tags:
+        - narocila
+      operationId: seznamNarocil
+      summary: Pridobi seznam naročil
+      parameters:
+        - name: status
+          in: query
+          schema: 
+            $ref: "#/components/schemas/StatusNarocila"
+        - name: restavracijaId
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Seznam naročil
+          content:
+            application/json:
+              schema: 
+                $ref: "#/components/schemas/SeznamNarocil"
+        '400':
+          $ref: "#/components/responses/NapacnaZahteva"
+    post:
+      tags:
+        - narocila
+      operationId: ustvariNarocilo
+      summary: Ustvari novo naročilo
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NovoNarocilo"
+      responses:
+        '201':  
+          description: Naročilo ustvarjeno
+          headers:
+            Location:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Narocilo"
+        '400':
+          $ref: "#/components/responses/NapacnaZahteva"
+        '404':
+          $ref: "#/components/responses/NiNajden"
+        '409':
+          $ref: "#/components/responses/Konflikt"
+        '422':
+          $ref: "#/components/responses/NeveljavenVnos"
+        '503':
+          $ref: "#/components/responses/StoritevNedosegljiva"
+  /v1/narocila/{narociloId}:
+    parameters:
+      - $ref: "#/components/parameters/NarociloId"
+    get:
+      tags:
+        - narocila
+      operationId: podrobnostiNarocila
+      summary: Pridobi naročilo po ID
+      responses: 
+        '200':
+          description: Podrobnosti naročila
+          content:
+              application/json:
+                schema:
+                  $ref: "#/components/schemas/Narocilo"
+        '404':
+          $ref: "#/components/responses/NiNajden"
+  /v1/narocila/{narociloId}/preklic:
+    parameters:
+      - $ref: "#/components/parameters/NarociloId"
+    post:
+      tags:
+        - narocila
+      operationId: prekliciNarocilo
+      summary: Prekliči naročilo po ID
+      description: Stranka prekliče naročilo. Dovoljeno iz statusov CAKA_NA_SPREJEM in SPREJETO.
+      responses:
+        '200':
+          description: Preklicano naročilo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Narocilo"
+        '404':
+          $ref: "#/components/responses/NiNajden"
+        '409':
+          $ref: "#/components/responses/Konflikt"
+  /v1/narocila/{narociloId}/zavrnitev:
+    parameters:
+      - $ref: "#/components/parameters/NarociloId"
+    post:
+      tags:
+        - narocila
+      operationId: zavrniNarocilo
+      summary: Zavrni naročilo po ID
+      description: Restavracija zavrne naročilo. Dovoljeno iz statusa CAKA_NA_SPREJEM.
+      responses:
+        '200':
+          description: Zavrnjeno naročilo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Narocilo"
+        '404':
+          $ref: "#/components/responses/NiNajden"
+        '409':
+          $ref: "#/components/responses/Konflikt"
+  /v1/narocila/{narociloId}/sprejem:
+    parameters:
+      - $ref: "#/components/parameters/NarociloId"
+    post:
+      tags:
+        - narocila
+      operationId: sprejmiNarocilo
+      summary: Sprejmi naročilo po ID
+      description: Restavracija sprejme naročilo. Dovoljeno iz statusa CAKA_NA_SPREJEM.
+      responses:
+        '200':
+          description: Sprejeto naročilo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Narocilo"
+        '404':
+          $ref: "#/components/responses/NiNajden"
+        '409':
+          $ref: "#/components/responses/Konflikt"
+  /v1/narocila/{narociloId}/placilo:
+    parameters:
+      - $ref: "#/components/parameters/NarociloId"
+    post:
+      tags:
+        - narocila
+      operationId: placajNarocilo
+      summary: Plačaj naročilo po ID
+      description: Stranka plača naročilo. Dovoljeno iz statusa SPREJETO.
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Plačano naročilo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Narocilo"
+        '400':
+          $ref: "#/components/responses/NapacnaZahteva"
+        '404':
+          $ref: "#/components/responses/NiNajden"
+        '409':
+          $ref: "#/components/responses/Konflikt"
+        '503':
+          $ref: "#/components/responses/StoritevNedosegljiva"
+  /v1/narocila/{narociloId}/prevzem:
+    parameters:
+      - $ref: "#/components/parameters/NarociloId"
+    post:
+      tags:
+        - narocila
+      operationId: prevzemiNarocilo
+      summary: Prevzem naročila po ID
+      description: Restavracija odda naročilo v prevzem. Dovoljeno iz statusa PLACANO.
+      responses:
+        '200':
+          description: Prevzeto naročilo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Narocilo"
+        '404':
+          $ref: "#/components/responses/NiNajden"
+        '409':
+          $ref: "#/components/responses/Konflikt"
+  /v1/narocila/{narociloId}/dostava:
+    parameters:
+      - $ref: "#/components/parameters/NarociloId"
+    post:
+      tags:
+        - narocila
+      operationId: dostaviNarocilo
+      summary: Dostava naročila po ID
+      description: Restavracija dostavi naročilo stranki. Dovoljeno iz statusa V_DOSTAVI.
+      responses:
+        '200':
+          description: Dostavljeno naročilo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Narocilo"
+        '404':
+          $ref: "#/components/responses/NiNajden"
+        '409':
+          $ref: "#/components/responses/Konflikt"
+  /v1/narocila/{narociloId}/ocena:
+    parameters:
+      - $ref: "#/components/parameters/NarociloId"
+    post:
+      tags:
+        - ocene
+      operationId: oceniNarocilo
+      summary: Oceni naročilo
+      description: Stranka oceni dostavljeno naročilo. Dovoljeno samo iz statusa DOSTAVLJENO in samo enkrat.
+      requestBody:
+        required: true
+        content:
+          application/json:
+              schema:
+                $ref: "#/components/schemas/NovaOcena"
+      responses:
+        '201':  
+          description: Ocena oddana
+          headers:
+            Location:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ocena"
+        '400':
+          $ref: "#/components/responses/NapacnaZahteva"
+        '404':
+          $ref: "#/components/responses/NiNajden"
+        '409':
+          $ref: "#/components/responses/Konflikt"
+        '422':
+          $ref: "#/components/responses/NeveljavenVnos"
+
+components:
+  responses:
+    NapacnaZahteva:
+      description: Zahteve ni mogoče razčleniti
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    NiNajden:
+      description: Vir ne obstaja
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    Konflikt:
+      description: >
+        Zahteva je v konfliktu s trenutnim stanjem. Tip problema pove razlog:
+        jed-ni-na-voljo, slab-prehod, ze-ocenjeno ali ni-dostavljeno.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    NeveljavenVnos:
+      description: Podatki kršijo pravila
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ValidacijskiProblem"
+    StoritevNedosegljiva:
+      description: >
+        Odvisna storitev ne odgovori. Tip problema pove katera:
+        katalog-nedosegljiv ali placila-nedosegljiva.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+  parameters:
+    NarociloId:
+      name: narociloId
+      in: path
+      required: true
+      schema:
+        type: string
+  schemas:
+    Postavka:
+      type: object
+      required:
+        - jedId
+        - ime
+        - cena
+        - kolicina
+      properties:
+        jedId:
+          type: string
+          example: j-12
+        ime:
+          type: string
+          example: Margherita
+        cena:
+          $ref: "#/components/schemas/Cena"
+        kolicina:
+          type: integer
+          minimum: 1
+          example: 2
+    Narocilo:
+      type: object
+      required:
+        - id
+        - restavracijaId
+        - status
+        - postavke
+        - skupaj
+        - naslovDostave
+        - ustvarjeno
+      properties: 
+        id:
+          type: string
+          example: n-981
+        restavracijaId:
+          type: string
+          example: r-1
+        status:
+          $ref: "#/components/schemas/StatusNarocila"
+        postavke:
+          type: array
+          items:
+            $ref: "#/components/schemas/Postavka"
+        skupaj:
+          $ref: "#/components/schemas/Cena"
+        naslovDostave:
+          type: string
+          example: Večna pot 113, Ljubljana
+        ustvarjeno:
+          type: string
+          format: date-time
+          example: "2026-11-14T18:30:00Z"
+        transakcijaId:
+          type: string
+          example: tx-3f9c2e1a
+    SeznamNarocil:
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Narocilo"
+    StatusNarocila:
+      type: string
+      enum:
+        - CAKA_NA_SPREJEM
+        - SPREJETO
+        - PLACANO
+        - V_DOSTAVI
+        - DOSTAVLJENO
+        - ZAVRNJENO
+        - PREKLICANO
+    Ocena:
+      type: object
+      required:
+        - narociloId
+        - ocena
+        - ustvarjeno
+      properties:
+        narociloId:
+          type: string
+          example: n-981
+        ocena:
+          type: integer
+          minimum: 1
+          maximum: 5
+          example: 4
+        komentar:
+          type: string
+          example: Dostavljeno je bilo hitro, vendar hrana je bila malo hladna.
+        ustvarjeno:
+          type: string
+          format: date-time
+          example: "2026-11-20T19:05:00Z"
+    NovaOcena:
+      type: object
+      required:
+        - ocena
+      properties: 
+        ocena:
+          type: integer
+          minimum: 1
+          maximum: 5
+          example: 4
+        komentar:
+          type: string
+          maxLength: 500
+          example: Dostavljeno je bilo hitro, vendar hrana je bila malo hladna.
+    NovaPostavka:
+      type: object
+      required:
+        - jedId
+        - kolicina
+      properties: 
+        jedId:
+          type: string
+          example: j-12
+        kolicina:
+          type: integer
+          minimum: 1
+          example: 2
+    NovoNarocilo:
+      type: object
+      required:
+        - restavracijaId
+        - postavke
+        - naslovDostave
+      properties: 
+        restavracijaId:
+          type: string
+          example: r-1
+        postavke:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/NovaPostavka"
+        naslovDostave:
+          type: string
+          example: Večna pot 113, Ljubljana
+    Cena:
+      type: object
+      required: 
+        - znesek
+        - valuta
+      properties: 
+        znesek:
+          type: string
+          pattern: '^\d+\.\d{2}$'
+          example: "9.50"
+        valuta:
+          type: string
+          enum:
+            - EUR
+          example: EUR
+    Problem:
+      type: object
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+          example: Vir ne obstaja
+        status:
+          type: integer
+          example: 404
+        detail:
+          type: string
+          example: Naročilo n-981 ne obstaja.
+        instance:
+          type: string
+          example: /v1/narocila/n-981
+    ValidacijskiProblem:
+      allOf:
+        - $ref: "#/components/schemas/Problem"
+        - type: object
+          properties:
+            errors:
+              type: array
+              items:
+                type: object
+                properties:
+                  pointer:
+                    type: string
+                    example: "#/postavke/0/kolicina"
+                  detail:
+                    type: string
+                    example: mora biti vsaj 1
