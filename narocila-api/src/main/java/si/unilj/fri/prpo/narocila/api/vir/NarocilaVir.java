@@ -10,11 +10,12 @@ import java.util.UUID;
 import java.util.Map;
 
 import jakarta.ws.rs.BadRequestException;
-import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.core.Response;
 import jakarta.enterprise.context.ApplicationScoped;
 
+import si.unilj.fri.prpo.narocila.api.napake.KonfliktException;
+import si.unilj.fri.prpo.narocila.api.napake.VnosException;
 import si.unilj.fri.prpo.narocila.api.model.NovaPostavka;
 import si.unilj.fri.prpo.narocila.api.model.Postavka;
 import si.unilj.fri.prpo.narocila.api.model.SeznamNarocil;
@@ -41,11 +42,10 @@ public class NarocilaVir implements NarocilaApi {
 
     private Response prehod(String narociloId, StatusNarocila novi, String dejanje, StatusNarocila... dovoljeni) {
         Narocilo narocilo = najdiNarocilo(narociloId);
-
         synchronized (narocilo) {
             if (!List.of(dovoljeni).contains(narocilo.getStatus())) {
-                throw new WebApplicationException("Naročila " + narociloId + " s statusom " + narocilo.getStatus() + " ni mogoče " + dejanje + ".", Response.Status.CONFLICT);
-            } // pozneje dodaj KonfliktException(...);
+                throw new KonfliktException("slab-prehod","Naročila " + narociloId + " s statusom " + narocilo.getStatus() + " ni mogoče " + dejanje + ".");
+            }
             narocilo.setStatus(novi);
             return Response.ok(narocilo).build();
         }
@@ -55,7 +55,7 @@ public class NarocilaVir implements NarocilaApi {
     public Response ustvariNarocilo(NovoNarocilo novoNarocilo) {
         Map<String, NarocilaShramba.JedIzKataloga> meni = shramba.meniji().get(novoNarocilo.getRestavracijaId());
         if (meni == null) {
-            throw new WebApplicationException("Restavracija ne obstaja.", 422); // pozneje dodaj VnosException(...)
+            throw new VnosException("#/restavracijaId", "Restavracija " + novoNarocilo.getRestavracijaId() + " ne obstaja.");
         }
 
         List<Postavka> postavke = new ArrayList<>();
@@ -63,10 +63,10 @@ public class NarocilaVir implements NarocilaApi {
             NovaPostavka nova = novoNarocilo.getPostavke().get(i);
             NarocilaShramba.JedIzKataloga jed = meni.get(nova.getJedId());
             if (jed == null) {
-                throw new WebApplicationException("Jed " + nova.getJedId() + " ne obstaja.", 422); // pozneje dodaj VnosException(...)
+                throw new VnosException("#/postavke/" + i + "/jedId", "Jed " + nova.getJedId() + " ne obstaja.");
             }
             if (!jed.razpolozljiva()) {
-                throw new WebApplicationException(Response.Status.CONFLICT); // pozneje dodaj KonfliktException(...);
+                throw new KonfliktException("jed-ni-na-voljo", "Jed " + nova.getJedId() + " ni na voljo.");
             }
             postavke.add(new Postavka()
             .jedId(nova.getJedId())
@@ -140,7 +140,7 @@ public class NarocilaVir implements NarocilaApi {
             }
 
             if (narocilo.getStatus() != StatusNarocila.SPREJETO) {
-                throw new WebApplicationException(Response.Status.CONFLICT); // pozneje dodaj KonfliktException(...);
+                throw new KonfliktException("slab-prehod", "Naročila " + narociloId + " s statusom " + narocilo.getStatus() + " ni mogoče plačati.");
             }
 
             String zeRezervirano = shramba.placilniKljuci().putIfAbsent(idempotencyKey, narociloId);
