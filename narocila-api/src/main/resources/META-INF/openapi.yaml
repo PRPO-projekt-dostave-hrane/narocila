@@ -469,6 +469,7 @@ components:
       properties:
         type:
           type: string
+          example: https://dostava-hrane.example/problemi/ni-najden
         title:
           type: string
           example: Vir ne obstaja
