@@ -66,6 +66,9 @@ public class ValidacijaMapper implements ExceptionMapper<ValidationException> {
         String parameter = "";
         for (Path.Node n : v.getPropertyPath()) {
             if (n.getKind() == ElementKind.PROPERTY) {
+                if (n.isInIterable() && n.getIndex() != null) {
+                    polja.append('/').append(n.getIndex());
+                }
                 polja.append('/').append(n.getName());
             } else if (n.getKind() == ElementKind.PARAMETER) {
                 parameter = n.getName();
