@@ -75,8 +75,6 @@ paths:
                 $ref: "#/components/schemas/Narocilo"
         '400':
           $ref: "#/components/responses/NapacnaZahteva"
-        '404':
-          $ref: "#/components/responses/NiNajden"
         '409':
           $ref: "#/components/responses/Konflikt"
         '422':
@@ -483,6 +481,15 @@ components:
         instance:
           type: string
           example: /v1/narocila/n-981
+    NapakaVnosa:
+      type: object
+      properties:
+        pointer:
+          type: string
+          example: "#/cena/znesek"
+        detail:
+          type: string
+          example: neveljavna oblika zneska
     ValidacijskiProblem:
       allOf:
         - $ref: "#/components/schemas/Problem"
@@ -491,11 +498,4 @@ components:
             errors:
               type: array
               items:
-                type: object
-                properties:
-                  pointer:
-                    type: string
-                    example: "#/postavke/0/kolicina"
-                  detail:
-                    type: string
-                    example: mora biti vsaj 1
+                $ref: "#/components/schemas/NapakaVnosa"
