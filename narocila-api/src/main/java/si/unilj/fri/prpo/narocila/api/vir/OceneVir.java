@@ -5,10 +5,10 @@ import java.time.OffsetDateTime;
 import java.net.URI;
 
 import jakarta.ws.rs.NotFoundException;
-import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Response;
 import jakarta.enterprise.context.ApplicationScoped;
 
+import si.unilj.fri.prpo.narocila.api.napake.KonfliktException;
 import si.unilj.fri.prpo.narocila.api.model.Narocilo;
 import si.unilj.fri.prpo.narocila.api.model.StatusNarocila;
 import si.unilj.fri.prpo.narocila.api.model.NovaOcena;
@@ -30,7 +30,7 @@ public class OceneVir implements OceneApi {
             throw new NotFoundException("Naročilo ni bilo najdeno.");
         }
         if (narocilo.getStatus() != StatusNarocila.DOSTAVLJENO) {
-            throw new WebApplicationException("Naročila " + narociloId + " s statusom " + narocilo.getStatus() + " ni mogoče oceniti.", Response.Status.CONFLICT); // pozneje KonfliktException(...)
+            throw new KonfliktException("ni-dostavljeno", "Naročila " + narociloId + " s statusom " + narocilo.getStatus() + " ni mogoče oceniti.");
         }
 
         Ocena ocena = new Ocena()
@@ -40,7 +40,7 @@ public class OceneVir implements OceneApi {
         .ustvarjeno(OffsetDateTime.now(ZoneOffset.UTC));
 
         if (shramba.ocene().putIfAbsent(narociloId, ocena) != null) {
-            throw new WebApplicationException("Naročilo " + narociloId + " je že ocenjeno.", Response.Status.CONFLICT); // pozneje KonfliktException(...)
+            throw new KonfliktException("ze-ocenjeno", "Naročilo " + narociloId + " je že ocenjeno.");
         }
 
         URI lokacija = URI.create("/v1/narocila/" + narociloId + "/ocena");
