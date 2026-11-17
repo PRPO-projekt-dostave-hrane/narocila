@@ -143,10 +143,14 @@ public class NarocilaVir implements NarocilaApi {
                 throw new WebApplicationException(Response.Status.CONFLICT); // pozneje dodaj KonfliktException(...);
             }
 
+            String zeRezervirano = shramba.placilniKljuci().putIfAbsent(idempotencyKey, narociloId);
+            if (zeRezervirano != null) {
+                throw new BadRequestException("Idempotency-Key je že uporabljen za drugo naročilo.");
+            }
+
             String transakcijaId = "tx-" + UUID.randomUUID();
             narocilo.setTransakcijaId(transakcijaId);
             narocilo.setStatus(StatusNarocila.PLACANO);
-            shramba.placilniKljuci().put(idempotencyKey, narociloId);
             return Response.ok(narocilo).build();
         }
     }
